@@ -22,7 +22,7 @@ interface Lead {
   createdAt: string;
 }
 
-type SortableField = keyof Lead;
+type SortableField = 'businessName' | 'contactPerson' | 'status' | 'priority' | 'createdAt';
 
 // Add animation styles
 const notificationStyles = {
@@ -111,7 +111,7 @@ export default function LeadsPage() {
     return 0;
   });
 
-  const getStatusColor = (status: Lead['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'new':
         return 'bg-blue-100 text-blue-800';
@@ -128,7 +128,7 @@ export default function LeadsPage() {
     }
   };
 
-  const getPriorityColor = (priority: Lead['priority']) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
         return 'bg-red-100 text-red-800';

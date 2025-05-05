@@ -16,12 +16,22 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    console.log('Received request body:', body);
+interface LeadData {
+  businessName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  status: string;
+  priority: string;
+  notes: string;
+}
 
-    const { user } = body;
+export async function POST(req: Request) {
+  try {
+    const data: LeadData = await req.json();
+    console.log('Received request body:', data);
+
+    const { user } = data;
     console.log('User from request:', user);
 
     if (!user || !user.email) {
@@ -39,17 +49,17 @@ export async function POST(request: Request) {
 
     // Prepare the lead data with required fields and defaults
     const leadData = {
-      ...body,
+      ...data,
       leadId, // Add the generated leadId
       createdBy: user,
-      status: body.status || 'new',
-      priority: body.priority || 'medium',
+      status: data.status || 'new',
+      priority: data.priority || 'medium',
       isArchived: false,
-      source: body.source || 'manual',
+      source: data.source || 'manual',
       location: {
-        city: body.location?.city || '',
-        state: body.location?.state || '',
-        country: body.location?.country || '' // Add country field
+        city: data.location?.city || '',
+        state: data.location?.state || '',
+        country: data.location?.country || '' // Add country field
       }
     };
 
@@ -70,7 +80,7 @@ export async function POST(request: Request) {
     }
 
     // Validate that either email or phone number is provided
-    if (!leadData.email && !leadData.phoneNumber) {
+    if (!leadData.email && !leadData.phone) {
       return NextResponse.json(
         { error: 'Either email or phone number must be provided' },
         { status: 400 }
@@ -99,11 +109,11 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating lead:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'Unknown error');
     return NextResponse.json(
-      { error: `Failed to create lead: ${error.message}` },
+      { error: `Failed to create lead: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }

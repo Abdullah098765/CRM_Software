@@ -2,17 +2,18 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import { Lead } from '@/models/Lead';
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
+export async function POST(request: Request, { params }: RouteParams) {
   try {
     await connectDB();
-    const lead = await Lead.findByIdAndUpdate(
-      params.id,
-      { isArchived: true },
-      { new: true }
-    );
+
+    const { id } = params;
+    const lead = await Lead.findById(id);
 
     if (!lead) {
       return NextResponse.json(
@@ -21,7 +22,13 @@ export async function POST(
       );
     }
 
-    return NextResponse.json(lead);
+    lead.isArchived = true;
+    await lead.save();
+
+    return NextResponse.json(
+      { message: 'Lead archived successfully' },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Error archiving lead:', error);
     return NextResponse.json(
