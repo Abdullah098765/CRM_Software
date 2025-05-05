@@ -5,7 +5,7 @@ import { parse } from 'json2csv';
 
 export async function GET() {
   try {
-    await connectDB();
+    const db = await connectDB();
 
     const leads = await Lead.find({ isArchived: false })
       .select('-__v')

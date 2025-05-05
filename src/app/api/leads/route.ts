@@ -2,9 +2,28 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import { Lead } from '@/models/Lead';
 
+interface LeadData {
+  businessName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  status: string;
+  priority: string;
+  notes: string;
+  user?: {
+    email: string;
+  };
+  source?: string;
+  location?: {
+    city: string;
+    state: string;
+    country: string;
+  };
+}
+
 export async function GET() {
   try {
-    await connectDB();
+    const db = await connectDB();
     const leads = await Lead.find().sort({ createdAt: -1 });
     return NextResponse.json(leads);
   } catch (error) {
@@ -16,23 +35,12 @@ export async function GET() {
   }
 }
 
-interface LeadData {
-  businessName: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  status: string;
-  priority: string;
-  notes: string;
-}
-
 export async function POST(req: Request) {
   try {
     const data: LeadData = await req.json();
     console.log('Received request body:', data);
 
     const { user } = data;
-    console.log('User from request:', user);
 
     if (!user || !user.email) {
       return NextResponse.json(
@@ -41,7 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
-    await connectDB();
+    const db = await connectDB();
 
     // Get the count of existing leads to generate a unique leadId
     const count = await Lead.countDocuments();
@@ -50,7 +58,7 @@ export async function POST(req: Request) {
     // Prepare the lead data with required fields and defaults
     const leadData = {
       ...data,
-      leadId, // Add the generated leadId
+      leadId,
       createdBy: user,
       status: data.status || 'new',
       priority: data.priority || 'medium',
@@ -59,18 +67,18 @@ export async function POST(req: Request) {
       location: {
         city: data.location?.city || '',
         state: data.location?.state || '',
-        country: data.location?.country || '' // Add country field
+        country: data.location?.country || ''
       }
     };
 
     // Remove user object from leadData
-    delete leadData.user;
+    delete (leadData as any).user;
 
     console.log('Prepared lead data:', leadData);
 
     // Validate required fields
     const requiredFields = ['businessName', 'createdBy', 'businessCategory'];
-    const missingFields = requiredFields.filter(field => !leadData[field]);
+    const missingFields = requiredFields.filter(field => !(leadData as any)[field]);
 
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -88,7 +96,7 @@ export async function POST(req: Request) {
     }
 
     // Validate location fields
-    if (!leadData.country || !leadData.state || !leadData.city) {
+    if (!leadData.location?.country || !leadData.location?.state || !leadData.location?.city) {
       return NextResponse.json(
         { error: 'Location fields (country, state, city) are required' },
         { status: 400 }

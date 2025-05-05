@@ -10,7 +10,7 @@ interface RouteParams {
 
 export async function POST(request: Request, { params }: RouteParams) {
   try {
-    await connectDB();
+    const db = await connectDB();
 
     const { id } = params;
     const lead = await Lead.findById(id);
