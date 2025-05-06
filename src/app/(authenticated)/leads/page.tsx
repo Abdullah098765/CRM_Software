@@ -334,10 +334,15 @@ export default function LeadsPage() {
                   <tr 
                     key={`${lead._id}-${index}`}
                     ref={index === sortedLeads.length - 1 ? lastLeadElementRef : undefined}
+                    onClick={() => router.push(`/leads/${lead._id}`)}
+                    className="cursor-pointer hover:bg-gray-50"
                   >
                     <td 
-                      className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 cursor-pointer hover:text-indigo-600 max-w-[150px] truncate"
-                      onClick={() => copyToClipboard(lead.leadId)}
+                      className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-[150px] truncate"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(lead.leadId);
+                      }}
                       title="Click to copy ID"
                     >
                       {lead.leadId || '--- --- ---'}

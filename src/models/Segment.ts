@@ -163,4 +163,15 @@ segmentSchema.index({ city: 1 });
 segmentSchema.index({ state: 1 });
 segmentSchema.index({ country: 1 });
 
+// Add text index for search
+segmentSchema.index({
+  name: 'text',
+  description: 'text'
+}, {
+  weights: {
+    name: 10,
+    description: 5
+  }
+});
+
 export const Segment = mongoose.models.Segment || mongoose.model<ISegment>('Segment', segmentSchema); 

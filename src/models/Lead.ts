@@ -111,4 +111,29 @@ leadSchema.index({ email: 1 });
 leadSchema.index({ city: 1 });
 leadSchema.index({ state: 1 });
 
+// Add text index for search
+leadSchema.index({
+  businessName: 'text',
+  contactPerson: 'text',
+  email: 'text',
+  phoneNumber: 'text',
+  businessCategory: 'text',
+  city: 'text',
+  state: 'text',
+  country: 'text',
+  notes: 'text'
+}, {
+  weights: {
+    businessName: 10,
+    contactPerson: 5,
+    email: 3,
+    phoneNumber: 3,
+    businessCategory: 2,
+    city: 2,
+    state: 2,
+    country: 2,
+    notes: 1
+  }
+});
+
 export const Lead = mongoose.models.Lead || mongoose.model<ILead>('Lead', leadSchema); 

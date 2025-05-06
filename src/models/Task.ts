@@ -66,4 +66,15 @@ taskSchema.index({ priority: 1 });
 taskSchema.index({ dueDate: 1 });
 taskSchema.index({ 'assignedTo.email': 1 });
 
+// Add text index for search
+taskSchema.index({
+  title: 'text',
+  description: 'text'
+}, {
+  weights: {
+    title: 10,
+    description: 5
+  }
+});
+
 export const Task = mongoose.models.Task || mongoose.model<ITask>('Task', taskSchema); 

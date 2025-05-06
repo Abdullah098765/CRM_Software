@@ -20,8 +20,23 @@ export default function Navbar() {
     leads: (ILead & { _id: Types.ObjectId })[];
     segments: (ISegment & { _id: Types.ObjectId })[];
     tasks: (ITask & { _id: Types.ObjectId; leadId: { businessName: string } })[];
-  }>({ leads: [], segments: [], tasks: [] });
+    pagination: {
+      hasMore: boolean;
+      page: number;
+      total: number;
+    };
+  }>({ 
+    leads: [], 
+    segments: [], 
+    tasks: [],
+    pagination: {
+      hasMore: false,
+      page: 1,
+      total: 0
+    }
+  });
   const [showResults, setShowResults] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => {
@@ -62,7 +77,7 @@ export default function Navbar() {
     const searchTimeout = setTimeout(async () => {
       if (searchQuery.trim()) {
         try {
-          const response = await fetch(`/api/search?query=${encodeURIComponent(searchQuery)}`);
+          const response = await fetch(`/api/search?query=${encodeURIComponent(searchQuery)}&page=1`);
           const data = await response.json();
           setSearchResults(data);
           setShowResults(true);
@@ -71,13 +86,44 @@ export default function Navbar() {
           toast.error('Failed to perform search');
         }
       } else {
-        setSearchResults({ leads: [], segments: [], tasks: [] });
+        setSearchResults({ 
+          leads: [], 
+          segments: [], 
+          tasks: [],
+          pagination: {
+            hasMore: false,
+            page: 1,
+            total: 0
+          }
+        });
         setShowResults(false);
       }
     }, 300);
 
     return () => clearTimeout(searchTimeout);
   }, [searchQuery]);
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !searchResults.pagination.hasMore) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = searchResults.pagination.page + 1;
+      const response = await fetch(`/api/search?query=${encodeURIComponent(searchQuery)}&page=${nextPage}`);
+      const data = await response.json();
+
+      setSearchResults(prev => ({
+        ...prev,
+        leads: [...prev.leads, ...data.leads],
+        pagination: data.pagination
+      }));
+    } catch (error) {
+      console.error('Error loading more results:', error);
+      toast.error('Failed to load more results');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard' },
@@ -145,6 +191,8 @@ export default function Navbar() {
                 <SearchResults
                   results={searchResults}
                   onClose={() => setShowResults(false)}
+                  onLoadMore={handleLoadMore}
+                  loadingMore={loadingMore}
                 />
               )}
             </div>
