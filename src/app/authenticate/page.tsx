@@ -18,9 +18,12 @@ export default function Authenticate() {
         if (user) {
           console.log('User found, attempting redirect...'); // Debug log
           // Try both methods of redirection
-          window.location.href = '/dashboard';
-
-        
+          try {
+            router.push('/dashboard');
+          } catch (e) {
+            console.log('Router replace failed, trying window.location'); // Debug log
+            window.location.href = '/dashboard';
+          }
         }
       } catch (error) {
         console.error('Error in checkAndRedirect:', error);
@@ -45,6 +48,8 @@ export default function Authenticate() {
       
       console.log('Storing user data:', userData); // Debug log
       localStorage.setItem('user', JSON.stringify(userData));
+      router.push('/dashboard');
+
 
       // Save user data to database
       try {
@@ -64,10 +69,14 @@ export default function Authenticate() {
         // Continue with the flow even if database save fails
       }
       
-      window.location.href = '/dashboard';
-
       // Try both methods of redirection
-
+      try {
+        console.log('Attempting router replace...'); // Debug log
+        router.push('/dashboard');
+      } catch (e) {
+        console.log('Router replace failed, trying window.location'); // Debug log
+        window.location.href = '/dashboard';
+      }
     } catch (error: any) {
       console.error('Sign in error:', error); // Debug log
       toast.error(error.message || 'An error occurred during sign in');
