@@ -48,31 +48,15 @@ const leadSchema = new mongoose.Schema<ILead>(
     },
     phoneNumber: {
       type: String,
-      validate: {
-        validator: function (v: string) {
-          if (v) return true;
-          return !!this.email;
-        },
-        message: 'Either phone number or email is required'
-      }
     },
     email: {
       type: String,
-      validate: {
-        validator: function (v: string) {
-          if (v) return true;
-          return !!this.phoneNumber;
-        },
-        message: 'Either phone number or email is required'
-      }
     },
     businessCategory: {
       type: String,
-      required: true,
     },
     businessType: {
       type: String,
-      required: true,
     },
     isArchived: {
       type: Boolean,
@@ -81,31 +65,25 @@ const leadSchema = new mongoose.Schema<ILead>(
     websiteUrl: String,
     city: {
       type: String,
-      required: true,
     },
     state: {
       type: String,
-      required: true,
     },
     country: {
       type: String,
-      required: true,
     },
     notes: String,
     status: {
       type: String,
-      enum: ['new', 'contacted', 'follow-up', 'converted', 'not-interested'],
       default: 'new',
     },
     priority: {
       type: String,
-      enum: ['low', 'medium', 'high'],
       default: 'medium',
     },
     followUpDate: Date,
     source: {
       type: String,
-      required: true,
     },
     serviceInterest: String,
     websiteStatus: String,

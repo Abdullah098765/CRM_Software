@@ -21,11 +21,33 @@ interface LeadData {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
+
     const db = await connectDB();
-    const leads = await Lead.find().sort({ createdAt: -1 });
-    return NextResponse.json(leads);
+    
+    // Get total count for pagination
+    const totalLeads = await Lead.countDocuments({ isArchived: false });
+    
+    // Get paginated leads
+    const leads = await Lead.find({ isArchived: false })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return NextResponse.json({
+      leads,
+      pagination: {
+        total: totalLeads,
+        page,
+        limit,
+        hasMore: skip + leads.length < totalLeads
+      }
+    });
   } catch (error) {
     console.error('Error fetching leads:', error);
     return NextResponse.json(

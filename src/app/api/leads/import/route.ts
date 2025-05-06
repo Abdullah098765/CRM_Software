@@ -42,10 +42,7 @@ export async function POST(request: Request) {
     const currentCount = await Lead.countDocuments();
 
     // Validate required fields
-    const requiredFields = [
-      'Business Name',
-      'Business Category'
-    ];
+    const requiredFields = ['Business Name'];
 
     const validationErrors = [];
     const validLeads = [];
@@ -54,13 +51,14 @@ export async function POST(request: Request) {
       const rowNumber = index + 2;
       const missingFields = requiredFields.filter(field => {
         const value = row[field] || row[field.toLowerCase()] || row[field.replace(/\s+/g, '')];
-        return !value || value.trim() === '';
+        console.log(value,index);
+        return !value || String(value).trim() === '';
       });
 
       if (missingFields.length > 0) {
         validationErrors.push({
           row: rowNumber,
-          missingFields: missingFields
+          message: `Missing required field: ${missingFields.join(', ')}`
         });
         continue;
       }
@@ -70,17 +68,18 @@ export async function POST(request: Request) {
 
       validLeads.push({
         leadId,
-        businessName: row['Business Name'] || row['businessName'] || '',
+        businessName: row['Business Name'] || row['businessName'] || row['business name'] || '',
         email: row['Email'] || row['email'] || '',
-        phoneNumber: row['Phone'] || row['phoneNumber'] || row['Phone Number'] || '',
-        businessType: row['Business Type'] || row['businessType'] || 'Other',
-        businessCategory: row['Business Category'] || row['businessCategory'] || '',
-        websiteUrl: row['Website'] || row['WebsiteUrl'] || '',
+        phoneNumber: row['Phone'] || row['phoneNumber'] || row['Phone Number'] || row['phone number'] || row['phone'] || '',
+        contactPerson: row['username'] || row['Username'] || row['name'] || row['Name'] || row['Contact Person'] || row['Full Name'] || row['First Name'] || '',
+        businessType: row['Business Type'] || row['businessType'] || row['business type'] || 'Other',
+        businessCategory: row['Business Category'] || row['businessCategory'] || row['business category'] || '',
+        websiteUrl: row['Website'] || row['WebsiteUrl'] || row['website'] || '',
         country: row['Country'] || row['country'] || '',
-        city: row['City'] || row['city'],
-        state: row['State'] || row['state'] || row['States'],
+        city: row['City'] || row['city'] || '',
+        state: row['State'] || row['state'] || row['States'] || '',
         status: 'new',
-        priority: 'medium',
+        priority: 'low',
         source: 'import',
         createdBy: {
           name: userData.name || 'Unknown User',
@@ -90,36 +89,30 @@ export async function POST(request: Request) {
       });
     }
 
-    if (validationErrors.length > 0) {
-      return NextResponse.json({
-        error: 'Validation failed',
-        details: {
-          totalRows: data.length,
-          validRows: validLeads.length,
-          invalidRows: validationErrors.length,
-          errors: validationErrors.map(err => ({
-            row: err.row,
-            message: `Missing required fields: ${err.missingFields.join(', ')}`
-          }))
-        }
-      }, { status: 400 });
-    }
-
+    // If there are no valid leads at all
     if (validLeads.length === 0) {
       return NextResponse.json({
-        error: 'No valid leads found in the file'
+        error: 'No valid leads found in the file',
+        details: {
+          totalRows: data.length,
+          validRows: 0,
+          invalidRows: validationErrors.length,
+          errors: validationErrors
+        }
       }, { status: 400 });
     }
 
     // Insert valid leads into database
     const result = await Lead.insertMany(validLeads);
 
+    // Return success response with validation details
     return NextResponse.json({
       message: 'Leads imported successfully',
-      count: result.length,
       details: {
-        totalProcessed: data.length,
-        successfullyImported: result.length
+        totalRows: data.length,
+        successfullyImported: result.length,
+        failedRows: validationErrors.length,
+        errors: validationErrors
       }
     });
 

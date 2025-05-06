@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +22,12 @@ interface Lead {
   createdAt: string;
 }
 
-type SortableField = 'businessName' | 'contactPerson' | 'status' | 'priority' | 'createdAt';
+interface PaginationInfo {
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
 
 // Add animation styles
 const notificationStyles = {
@@ -38,7 +43,11 @@ export default function LeadsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [copyNotification, setCopyNotification] = useState<string>('');
   const [importing, setImporting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const observer = useRef<IntersectionObserver>();
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -52,32 +61,53 @@ export default function LeadsPage() {
     `;
     document.head.appendChild(style);
 
-    // Cleanup function to remove the style when component unmounts
     return () => {
       document.head.removeChild(style);
     };
   }, []);
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  const fetchLeads = async () => {
+  const fetchLeads = async (pageNum: number = 1) => {
     try {
-      const res = await fetch('/api/leads');
+      const res = await fetch(`/api/leads?page=${pageNum}&limit=20`);
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.error || 'Error fetching leads');
       }
 
-      setLeads(data);
+      if (pageNum === 1) {
+        setLeads(data.leads);
+      } else {
+        setLeads(prev => [...prev, ...data.leads]);
+      }
+      
+      setHasMore(data.pagination.hasMore);
+      setPage(pageNum);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const lastLeadElementRef = useCallback((node: HTMLTableRowElement) => {
+    if (loadingMore) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setLoadingMore(true);
+        fetchLeads(page + 1);
+      }
+    });
+    
+    if (node) observer.current.observe(node);
+  }, [loadingMore, hasMore, page]);
 
   const handleSort = (field: keyof Lead) => {
     if (field === sortField) {
@@ -91,24 +121,12 @@ export default function LeadsPage() {
   const sortedLeads = [...leads].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
-
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
+    
+    if (sortDirection === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
     }
-
-    if (aValue && bValue) {
-      const aDate = new Date(aValue as string);
-      const bDate = new Date(bValue as string);
-      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
-        return sortDirection === 'asc'
-          ? aDate.getTime() - bDate.getTime()
-          : bDate.getTime() - aDate.getTime();
-      }
-    }
-
-    return 0;
   });
 
   const getStatusColor = (status: string) => {
@@ -141,41 +159,28 @@ export default function LeadsPage() {
     }
   };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyNotification('ID copied to clipboard!');
-      setTimeout(() => setCopyNotification(''), 2000); // Clear notification after 2 seconds
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-      setCopyNotification('Failed to copy ID');
-      setTimeout(() => setCopyNotification(''), 2000);
-    }
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopyNotification('Copied to clipboard!');
+    setTimeout(() => setCopyNotification(''), 2000);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file type
-    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
-      setError('Please upload an Excel or CSV file');
-      return;
-    }
-
-    // Get user data from localStorage
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      setError('User data not found. Please log in again.');
-      return;
-    }
-
-    setImporting(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('userData', userData);
-
     try {
+      setImporting(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Get user data from localStorage
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        throw new Error('User data not found');
+      }
+      formData.append('userData', userData);
+
       const response = await fetch('/api/leads/import', {
         method: 'POST',
         body: formData,
@@ -188,27 +193,16 @@ export default function LeadsPage() {
       }
 
       // Refresh the leads list
-      await fetchLeads();
-      setCopyNotification('Leads imported successfully!');
+      fetchLeads(1);
     } catch (err: any) {
       setError(err.message);
-      setCopyNotification('Failed to import leads');
     } finally {
       setImporting(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -237,6 +231,7 @@ export default function LeadsPage() {
           {copyNotification}
         </div>
       )}
+      
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Leads</h1>
@@ -332,14 +327,14 @@ export default function LeadsPage() {
                   >
                     City {sortField === 'city' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                    <span className="sr-only">View</span>
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {sortedLeads.map((lead) => (
-                  <tr key={lead._id}>
+                {sortedLeads.map((lead, index) => (
+                  <tr 
+                    key={`${lead._id}-${index}`}
+                    ref={index === sortedLeads.length - 1 ? lastLeadElementRef : undefined}
+                  >
                     <td 
                       className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 cursor-pointer hover:text-indigo-600 max-w-[150px] truncate"
                       onClick={() => copyToClipboard(lead.leadId)}
@@ -365,18 +360,18 @@ export default function LeadsPage() {
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 max-w-[150px] truncate">
                       {lead.city || '--- --- ---'}
                     </td>
-                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                      <Link
-                        href={`/leads/${lead._id}`}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        View
-                      </Link>
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {loadingMore && (
+              <div className="flex justify-center items-center py-4">
+                <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            )}
           </div>
         </div>
       </div>
