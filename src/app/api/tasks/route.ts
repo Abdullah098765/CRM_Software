@@ -11,41 +11,37 @@ interface LeadDocument {
   contactPerson: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const leadId = searchParams.get('leadId');
+    const status = searchParams.get('status');
+    const priority = searchParams.get('priority');
+    const assignedTo = searchParams.get('assignedTo');
+    const dueDateStart = searchParams.get('dueDateStart');
+    const dueDateEnd = searchParams.get('dueDateEnd');
+
     await connectDB();
 
-    // Fetch all tasks and populate lead information
-    const tasks = await Task.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    // Build query
+    const query: any = {};
 
-    // Get unique lead IDs
-    const leadIds = [...new Set(tasks.map(task => task.leadId.toString()))];
+    if (leadId) query.leadId = leadId;
+    if (status) query.status = status;
+    if (priority) query.priority = priority;
+    if (assignedTo) query['assignedTo.email'] = assignedTo;
+    
+    if (dueDateStart || dueDateEnd) {
+      query.dueDate = {};
+      if (dueDateStart) query.dueDate.$gte = new Date(dueDateStart);
+      if (dueDateEnd) query.dueDate.$lte = new Date(dueDateEnd);
+    }
 
-    // Fetch all leads in one query
-    const leads = await Lead.find(
-      { _id: { $in: leadIds } },
-      { businessName: 1, contactPerson: 1 }
-    ).lean();
+    const tasks = await Task.find(query)
+      .sort({ dueDate: 1, priority: -1 })
+      .populate('leadId', 'name email');
 
-    // Create a map of lead ID to lead data
-    const leadMap = leads.reduce((acc, lead) => {
-      const leadDoc = lead as LeadDocument;
-      acc[leadDoc._id.toString()] = {
-        businessName: leadDoc.businessName,
-        contactPerson: leadDoc.contactPerson
-      };
-      return acc;
-    }, {} as Record<string, { businessName: string; contactPerson: string }>);
-
-    // Add lead information to each task
-    const tasksWithLeads = tasks.map(task => ({
-      ...task,
-      lead: leadMap[task.leadId.toString()]
-    }));
-
-    return NextResponse.json(tasksWithLeads);
+    return NextResponse.json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json(
