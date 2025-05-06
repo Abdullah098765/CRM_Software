@@ -1,6 +1,6 @@
 'use client';
 
-import AuthGuard from '@/components/AuthGuard';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 
 export default function AuthenticatedLayout({
@@ -9,9 +9,13 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="pt-8 pb-12">{children}</main>
-    </div>
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background-primary">
+        <Navbar />
+        <main className="pt-16">
+          {children}
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 } 
