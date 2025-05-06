@@ -1,21 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace('/authenticate');
-      } else {
-        setIsAuthorized(true);
-      }
+    if (!loading && !user) {
+      router.replace('/authenticate');
     }
   }, [user, loading, router]);
 
@@ -28,11 +23,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
   }
 
-  // Don't render anything if not authorized
-  if (!isAuthorized) {
+  // Don't render anything if not authenticated
+  if (!user) {
     return null;
   }
 
-  // Only render children if authorized
+  // Render children if authenticated
   return <>{children}</>;
 } 
