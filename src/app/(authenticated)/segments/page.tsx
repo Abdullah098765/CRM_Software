@@ -243,7 +243,11 @@ export default function SegmentsPage() {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
             {segments.map((segment) => (
-              <li key={segment._id.toString()}>
+              <li 
+                key={segment._id.toString()}
+                onClick={() => router.push(`/segments/${segment._id}`)}
+                className="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
+              >
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">

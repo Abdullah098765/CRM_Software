@@ -158,11 +158,12 @@ export async function POST(request: Request) {
     const leadCount = await Lead.countDocuments(query);
     console.log('Lead count:', leadCount);
 
-    // Create the segment
+    // Create the segment with the query
     const segment = new Segment({
       name: body.name,
       description: body.description,
       filterCriteria: body.filterCriteria,
+      query:JSON.stringify(query, null, 2), // Save the query
       leadCount,
       createdBy: {
         email: userData.email,

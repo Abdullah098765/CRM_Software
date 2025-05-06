@@ -1,34 +1,35 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export interface ISegment extends mongoose.Document {
+export interface ISegment extends Document {
   name: string;
-  description?: string;
+  description: string;
   filterCriteria: {
-    status?: string | string[];
-    priority?: string | string[];
-    businessCategory?: string | string[];
-    businessType?: string | string[];
-    location?: {
-      city?: string | string[];
-      state?: string | string[];
-      country?: string | string[];
+    status: string[];
+    priority: string[];
+    businessCategory: string[];
+    businessType: string[];
+    location: {
+      country: string[];
+      state: string[];
+      city: string[];
     };
-    serviceInterest?: string | string[];
-    websiteStatus?: string | string[];
-    source?: string | string[];
-    createdBy?: string | string[];
-    isArchived?: boolean;
-    hasEmptyEmail?: boolean;
-    hasEmptyPhone?: boolean;
-    followUpDate?: {
-      from?: string;
-      to?: string;
+    serviceInterest: string[];
+    websiteStatus: string[];
+    source: string[];
+    createdBy: string[];
+    isArchived: boolean;
+    hasEmptyEmail: boolean;
+    hasEmptyPhone: boolean;
+    followUpDate: {
+      from: string;
+      to: string;
     };
-    createdAt?: {
-      from?: string;
-      to?: string;
+    createdAt: {
+      from: string;
+      to: string;
     };
   };
+  query: any; // Store the MongoDB query
   leadCount: number;
   createdBy: {
     email: string;
@@ -66,6 +67,7 @@ const segmentSchema = new mongoose.Schema<ISegment>(
         type: mongoose.Schema.Types.Mixed,
         default: undefined,
       },
+
       location: {
         city: {
           type: mongoose.Schema.Types.Mixed,
@@ -116,6 +118,10 @@ const segmentSchema = new mongoose.Schema<ISegment>(
         from: String,
         to: String,
       },
+    },
+    query: {
+      type: Object,
+      required: true,
     },
     leadCount: {
       type: Number,
