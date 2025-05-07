@@ -151,6 +151,28 @@ export async function POST(request: Request) {
       }
     }
 
+    // Handle search filter
+    if (body.filterCriteria.search && body.filterCriteria.search.trim()) {
+      const searchRegex = new RegExp(body.filterCriteria.search.trim(), 'i');
+      const searchConditions = [
+        { businessName: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { contactPerson: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { email: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { phoneNumber: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { city: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { state: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { businessCategory: { $regex: body.filterCriteria.search.trim(), $options: 'i' } },
+        { businessType: { $regex: body.filterCriteria.search.trim(), $options: 'i' } }
+      ];
+
+      // If there are existing $or conditions, combine them with search conditions
+      if (query.$or) {
+        query.$or = [...query.$or, ...searchConditions];
+      } else {
+        query.$or = searchConditions;
+      }
+    }
+
     // Log the query for debugging
     console.log('Segment query:', JSON.stringify(query, null, 2));
 
@@ -163,7 +185,7 @@ export async function POST(request: Request) {
       name: body.name,
       description: body.description,
       filterCriteria: body.filterCriteria,
-      query:JSON.stringify(query, null, 2), // Save the query
+      query: JSON.stringify(query), // Remove pretty printing to ensure proper parsing
       leadCount,
       createdBy: {
         email: userData.email,

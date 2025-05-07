@@ -28,6 +28,7 @@ export interface ISegment extends Document {
       from: string;
       to: string;
     };
+    search: string;
   };
   query: any; // Store the MongoDB query
   leadCount: number;
@@ -117,6 +118,10 @@ const segmentSchema = new mongoose.Schema<ISegment>(
       createdAt: {
         from: String,
         to: String,
+      },
+      search: {
+        type: String,
+        default: '',
       },
     },
     query: {

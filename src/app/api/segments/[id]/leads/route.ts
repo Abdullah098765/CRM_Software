@@ -22,6 +22,9 @@ export async function GET(
     // Parse the stored query string back to an object
     const query = JSON.parse(segment.query);
 
+    // Log the parsed query for debugging
+    console.log('Parsed query:', JSON.stringify(query, null, 2));
+
     // Use the parsed query to fetch leads
     const leads = await Lead.find(query).sort({ createdAt: -1 });
 
